@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Housie Master Board Pro</title>
+    <style>
+        /* --- DESIGN & STYLING --- */
+        :root {
+            --primary-color: #2c3e50;
+            --accent-color: #e74c3c;
+            --highlight-color: #f1c40f;
+            --called-color: #27ae60;
+            --text-light: #ecf0f1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f4f9;
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header { text-align: center; margin-bottom: 10px; }
+
+        /* Big Number Display */
+        #current-call-display {
+            background-color: var(--primary-color);
+            color: var(--text-light);
+            padding: 15px;
+            border-radius: 10px;
+            width: 300px;
+            text-align: center;
+            margin-bottom: 15px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+
+        #big-number { font-size: 5rem; font-weight: bold; margin: 0; line-height: 1; }
+        #call-text { font-size: 1.2rem; margin-top: 5px; font-style: italic; color: var(--highlight-color); }
+
+        /* Settings Area */
+        .settings-panel {
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            border: 1px solid #ddd;
+        }
+
+        .setting-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .setting-group label { font-size: 0.9rem; font-weight: bold; margin-bottom: 5px; }
+        input[type=range] { cursor: pointer; }
+
+        /* Controls */
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        button {
+            padding: 12px 24px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            color: white;
+            font-weight: bold;
+        }
+
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+        #btn-start { background-color: #2980b9; }
+        #btn-reset { background-color: #c0392b; }
+        button:hover:not(:disabled) { opacity: 0.9; transform: translateY(-1px); }
+
+        /* The Grid */
+        .board-grid {
+            display: grid;
+            grid-template-columns: repeat(10, 1fr);
+            gap: 6px;
+            max-width: 900px;
+            width: 100%;
+            background: white;
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+        }
+
+        .number-cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-color: #ecf0f1;
+            border-radius: 4px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            transition: all 0.2s;
+        }
+
+        .number-cell.called { background-color: var(--called-color); color: white; }
+        .number-cell.active {
+            background-color: var(--highlight-color);
+            color: var(--primary-color);
+            transform: scale(1.15);
+            border: 2px solid var(--accent-color);
+            z-index: 10;
+            box-shadow: 0 0 10px rgba(0,0,0,0.2);
+        }
+
+        .status-bar { margin-bottom: 10px; font-weight: bold; color: var(--primary-color); }
+
+        /* --- 5. INSTRUCTIONS STYLING --- */
+        .instructions {
+            margin-top: 30px;
+            max-width: 800px;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 5px solid var(--primary-color);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        
+        .instructions h3 { margin-top: 0; color: var(--primary-color); }
+        .instructions ul { padding-left: 20px; }
+        .instructions li { margin-bottom: 8px; line-height: 1.4; }
+
+        @media (max-width: 600px) {
+            .board-grid { grid-template-columns: repeat(5, 1fr); }
+            .settings-panel { flex-direction: column; gap: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Housie / Tambola Master</h1>
+    </header>
+
+    <div class="settings-panel">
+        <div class="setting-group">
+            <label for="speed-slider">Voice Rate (Speaking Speed)</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span>Slow</span>
+                <input type="range" id="speed-slider" min="0.4" max="1.2" step="0.1" value="0.7" oninput="updateSettings()">
+                <span>Fast</span>
+            </div>
+            <small id="rate-val-display">Current: 0.7x</small>
+        </div>
+
+        <div class="setting-group">
+            <label for="delay-slider">Call Delay (Time between numbers)</label>
+            <div style="display:flex; align-items:center; gap:10px;">
+                <span>3s</span>
+                <input type="range" id="delay-slider" min="3" max="12" step="1" value="5" oninput="updateSettings()">
+                <span>12s</span>
+            </div>
+            <small id="delay-val-display">Current: 5 seconds</small>
+        </div>
+    </div>
+
+    <div id="current-call-display">
+        <div id="big-number">--</div>
+        <div id="call-text">Waiting...</div>
+    </div>
+
+    <div class="status-bar" id="status-bar">Status: Ready</div>
+
+    <div class="controls">
+        <button id="btn-start" onclick="toggleGame()">Start Game</button>
+        <button id="btn-reset" onclick="resetGame()">New Game</button>
+    </div>
+
+    <div class="board-grid" id="board"></div>
+
+    <div class="instructions">
+        <h3>How to Play with Friends:</h3>
+        <ul>
+            <li><strong>Marking Tickets:</strong> Players should use a pen or marker to cross out numbers on their physical tickets as they appear <strong>Green</strong> on this master board.</li>
+            <li><strong>Managing the Pace:</strong> Use the sliders above to find a speed your group is comfortable with. (Note: 5-6 seconds is usually best for beginners).</li>
+            <li><strong>Claims:</strong> If a player completes a pattern (Line, Full House), they must shout <strong>"STOP"</strong>. Immediately click <strong>"Pause Game"</strong> to verify their ticket against the highlighted numbers on this board.</li>
+            <li><strong>Winning:</strong> Only numbers already called and highlighted on this board are valid for claims.</li>
+        </ul>
+    </div>
+
+    <script>
+        const TOTAL_NUMBERS = 90;
+        let numbersPool = [];
+        let calledNumbers = [];
+        let isRunning = false;
+        let isPaused = false;
+        let timerId = null;
+
+        let voiceRate = 0.7; 
+        let callDelayMs = 5000;
+
+        const synth = window.speechSynthesis;
+        let voiceSelect = null;
+
+        window.onload = () => {
+            initBoard();
+            loadVoices();
+            updateSettings();
+        };
+
+        function initBoard() {
+            const board = document.getElementById('board');
+            board.innerHTML = '';
+            for (let i = 1; i <= TOTAL_NUMBERS; i++) {
+                const cell = document.createElement('div');
+                cell.classList.add('number-cell');
+                cell.id = `num-${i}`;
+                cell.innerText = i;
+                board.appendChild(cell);
+            }
+        }
+
+        function updateSettings() {
+            const rateInput = document.getElementById('speed-slider').value;
+            const delayInput = document.getElementById('delay-slider').value;
+            voiceRate = parseFloat(rateInput);
+            callDelayMs = parseInt(delayInput) * 1000;
+            document.getElementById('rate-val-display').innerText = `Current: ${voiceRate}x`;
+            document.getElementById('delay-val-display').innerText = `Current: ${delayInput} seconds`;
+        }
+
+        function loadVoices() {
+            let voices = synth.getVoices();
+            voiceSelect = voices.find(v => v.name.includes("Google US English")) || 
+                          voices.find(v => v.lang.includes('en-US')) || 
+                          voices.find(v => v.lang.includes('en-GB'));
+        }
+        if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = loadVoices;
+        }
+
+        function toggleGame() {
+            const btn = document.getElementById('btn-start');
+            if (!isRunning && !isPaused) {
+                startGame();
+                btn.innerText = "Pause Game";
+                btn.style.backgroundColor = "#f39c12"; 
+            } else if (isRunning) {
+                pauseGame();
+                btn.innerText = "Resume Game";
+                btn.style.backgroundColor = "#27ae60"; 
+            } else if (isPaused) {
+                resumeGame();
+                btn.innerText = "Pause Game";
+                btn.style.backgroundColor = "#f39c12";
+            }
+        }
+
+        function startGame() {
+            resetInternalState();
+            for (let i = 1; i <= TOTAL_NUMBERS; i++) numbersPool.push(i);
+            for (let i = numbersPool.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [numbersPool[i], numbersPool[j]] = [numbersPool[j], numbersPool[i]];
+            }
+            isRunning = true;
+            isPaused = false;
+            updateStatus("Game Running...");
+            gameLoop(); 
+        }
+
+        function gameLoop() {
+            if (!isRunning || isPaused) return;
+            if (numbersPool.length === 0) {
+                gameOver();
+                return;
+            }
+            callNextNumber();
+            timerId = setTimeout(gameLoop, callDelayMs);
+        }
+
+        function pauseGame() {
+            clearTimeout(timerId);
+            isRunning = false;
+            isPaused = true;
+            synth.cancel();
+            updateStatus("Game Paused!");
+        }
+
+        function resumeGame() {
+            isRunning = true;
+            isPaused = false;
+            updateStatus("Resuming...");
+            gameLoop();
+        }
+
+        function resetGame() {
+            clearTimeout(timerId);
+            synth.cancel();
+            isRunning = false;
+            isPaused = false;
+            document.getElementById('btn-start').innerText = "Start Game";
+            document.getElementById('btn-start').style.backgroundColor = "#2980b9";
+            document.getElementById('btn-start').disabled = false;
+            document.getElementById('big-number').innerText = "--";
+            document.getElementById('call-text').innerText = "Waiting...";
+            document.querySelectorAll('.number-cell').forEach(cell => cell.className = 'number-cell');
+            resetInternalState();
+            updateStatus("Ready for New Game");
+        }
+
+        function resetInternalState() {
+            numbersPool = [];
+            calledNumbers = [];
+        }
+
+        function callNextNumber() {
+            if (calledNumbers.length > 0) {
+                const prevId = `num-${calledNumbers[calledNumbers.length - 1]}`;
+                const prevCell = document.getElementById(prevId);
+                if(prevCell) prevCell.classList.remove('active');
+            }
+            const drawnNum = numbersPool.pop();
+            calledNumbers.push(drawnNum);
+            updateDisplay(drawnNum);
+            highlightBoard(drawnNum);
+            speakNumber(drawnNum);
+        }
+
+        function updateDisplay(num) {
+            document.getElementById('big-number').innerText = num;
+            document.getElementById('call-text').innerText = getLingo(num);
+        }
+
+        function highlightBoard(num) {
+            const cell = document.getElementById(`num-${num}`);
+            cell.classList.add('called', 'active');
+        }
+
+        function updateStatus(msg) {
+            document.getElementById('status-bar').innerText = "Status: " + msg;
+        }
+
+        function gameOver() {
+            updateStatus("Game Over!");
+            document.getElementById('btn-start').innerText = "Finished";
+            document.getElementById('btn-start').disabled = true;
+            speakNumber("Game Over");
+        }
+
+        function speakNumber(num) {
+            if (synth.speaking) synth.cancel();
+            let text = (typeof num === 'string') ? num : getLingo(num);
+            const utterThis = new SpeechSynthesisUtterance(text);
+            if (voiceSelect) utterThis.voice = voiceSelect;
+            utterThis.rate = voiceRate; 
+            synth.speak(utterThis);
+        }
+
+        function getLingo(num) {
+            if (num < 10) return `Single number ${num}`;
+            const digits = num.toString().split('');
+            return `${digits[0]} ${digits[1]}... ${num}`;
+        }
+    </script>
+</body>
+</html>
